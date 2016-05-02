@@ -8,6 +8,7 @@
 #ifndef SRC_TLP_H_
 #define SRC_TLP_H_
 
+#include "../libffl/src/libffl.h"
 #include <inttypes.h>
 
 #define TLP_MESSAGE_SIZE 31
