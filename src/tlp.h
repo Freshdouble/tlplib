@@ -2,7 +2,7 @@
  * tlp.h
  *
  *  Created on: 02. Mai 2016
- *      Author: Local
+ *      Author: Peter Kremsner
  */
 
 #ifndef SRC_TLP_H_
