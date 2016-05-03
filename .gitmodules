@@ -1,0 +1,4 @@
+[submodule "libfifo"]
+	path = libfifo
+[submodule "libfifo"]
+	url = https://github.com/Freshdouble/libfifo

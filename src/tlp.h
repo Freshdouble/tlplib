@@ -8,16 +8,18 @@
 #ifndef SRC_TLP_H_
 #define SRC_TLP_H_
 
-#include "../libffl/src/libffl.h"
 #include <inttypes.h>
 
 #define TLP_MESSAGE_SIZE 31
 #define WINDOW_SIZE 8
+#define RESEND_COUNTER 8
 
 typedef struct
 {
 	uint8_t data[TLP_MESSAGE_SIZE + 2];
 	uint8_t size;
+	uint8_t sequenceNumber;
+	uint8_t resendCounter;
 }tlp_message_t;
 
 typedef char (*tlp_frameRecieved)(tlp_message_t *message);
@@ -28,11 +30,11 @@ typedef struct
 	struct
 	{
 		tlp_message_t buffer[WINDOW_SIZE];
-
 	}transmit_buffer;
 	tlp_frameRecieved callback;
 	tlp_frameSend framesendFunction;
 	uint8_t data_to_acknowledge;
+	uint8_t last_recieved_sequence;
 	uint8_t last_transmitted_sequence;
 }tlp_t;
 

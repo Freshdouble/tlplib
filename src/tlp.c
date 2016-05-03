@@ -31,7 +31,11 @@ uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 	if(size < 2)
 		return 0;
 
-	tlp->data_to_acknowledge = data[0];
+	if((tlp->last_recieved_sequence + 1) != data[0]) //Check if frame is in the right order
+		return 0;
+
+	tlp->last_recieved_sequence = data[0]; //Update recieve Order
+	tlp->data_to_acknowledge = data[0];    //Ack byte
 	tlp_ack(data[1]);
 
 	for(i = 2; i < size; i++)
