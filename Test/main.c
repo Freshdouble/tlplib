@@ -55,12 +55,9 @@ int main (void)
 
 	unsigned char message[3][5] = {{1,1,1,1,1},{12,2,2,2,2},{3,3,3,3,3}};
 
-	tlp_send(&tlp1,message[0],5);
-	tlp_send(&tlp1,message[1],5);
-	tlp_send(&tlp1,message[2],5);
-
 	while(1)
 	{
+		tlp_send(&tlp1,message[0],5);
 		tlp_tick(&tlp1);
 		tlp_tick(&tlp2);
 	}

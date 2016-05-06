@@ -29,11 +29,12 @@ void tlp_recv_ack(uint8_t number, tlp_t *tlp)
 		for(i = 0; i < WINDOW_SIZE; i++)
 		{
 			message = fifo_get_nth_Object(i,&tlp->transmit_buffer.fifo);
+			if(!message)
+				break;
+
 			if(message->data[0] == number)
 			{
-				fifo_delete_n_Objects(i,&tlp->transmit_buffer.fifo);
-				if(fifo_empty(&tlp->transmit_buffer.fifo))
-					tlp->data_to_acknowledge = 0;
+				fifo_delete_n_Objects(i+1,&tlp->transmit_buffer.fifo);
 				break;
 			}
 		}
@@ -45,7 +46,10 @@ uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 	if(size < 2)
 		return 0;
 
-	if((tlp->last_recieved_sequence + 1) > data[0] || (tlp->last_recieved_sequence - WINDOW_SIZE) > data[0]) //Check if frame is in the right order
+	uint16_t upperSequence = tlp->last_recieved_sequence + 1;
+	uint16_t lowerSequence = ((uint16_t)(tlp->last_recieved_sequence - WINDOW_SIZE)) % WINDOW_SIZE;
+
+	if(upperSequence > data[0] || lowerSequence > data[0]) //Check if frame is in the right order
 		return 0;
 
 	tlp_recv_ack(data[1], tlp);
@@ -53,15 +57,8 @@ uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 	{
 		tlp->last_recieved_sequence = data[0]; //Update recieve Order
 
-		if(data[1] != 0) //If ACK is 0 it isn't valid ACK Field
-		{
-			if(data[1] < tlp->last_recieved_sequence)
-				//Acknowledge with last recieved sequence number
-				tlp->data_to_acknowledge = tlp->last_recieved_sequence;
-			else
-				//Acknowledge with current sequence number
-				tlp->data_to_acknowledge = data[0];    //Ack byte
-		}
+		tlp->data_to_acknowledge = data[0];    //Ack byte
+		tlp->ack_counter = ACK_COUNTER;
 
 		return tlp->callback(&data[2],size - 2);
 	}
@@ -111,7 +108,7 @@ void tlp_send_ack(tlp_t *tlp)
 	uint8_t message[2];
 	if(tlp->data_to_acknowledge)
 	{
-		message[0] = tlp->last_transmitted_sequence; //Pick a valid sequence number
+		message[0] = tlp->last_transmitted_sequence + 1; //Pick a valid sequence number
 		message[1] = tlp->data_to_acknowledge;
 		if(tlp->framesendFunction(message,2)) // Dont save this message, just transmit it
 		{
