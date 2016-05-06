@@ -25,7 +25,7 @@ typedef struct
 	uint8_t timeoutCounter;
 }tlp_message_t;
 
-typedef char (*tlp_frameRecieved)(tlp_message_t *message);
+typedef char (*tlp_frameRecieved)(uint8_t *buffer, uint8_t size);
 typedef char (*tlp_frameSend)(uint8_t *buffer, uint8_t size);
 typedef char (*tlp_timeOutCallback)(tlp_message_t* message);
 
@@ -44,5 +44,10 @@ typedef struct
 	uint8_t last_transmitted_sequence;
 	uint8_t ack_counter;
 }tlp_t;
+
+void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction, tlp_frameSend framesendFunction);
+uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size);
+uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size);
+void tlp_tick(tlp_t *tlp);
 
 #endif /* SRC_TLP_H_ */

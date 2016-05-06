@@ -42,9 +42,6 @@ void tlp_recv_ack(uint8_t number, tlp_t *tlp)
 
 uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 {
-	uint8_t i;
-	tlp_message_t message;
-
 	if(size < 2)
 		return 0;
 
@@ -66,13 +63,7 @@ uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 				tlp->data_to_acknowledge = data[0];    //Ack byte
 		}
 
-		for(i = 2; i < size; i++)
-		{
-			message.data[i] = data[i];
-		}
-		message.size = size - 2;
-
-		return tlp->callback(&message);
+		return tlp->callback(&data[2],size - 2);
 	}
 	return 1;
 }
