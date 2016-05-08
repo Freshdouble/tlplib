@@ -12,8 +12,8 @@
 #include "../libfifo/c/stc_fifo.h"
 
 #define TLP_MESSAGE_SIZE 31
-#define WINDOW_SIZE 8
-#define RESEND_COUNTER 8
+#define WINDOW_SIZE 7
+#define RESEND_COUNTER 5
 #define ACK_COUNTER RESEND_COUNTER - 2 //This must be smallern than the RESEND_COUNTER
 #define TIMEOUT 10 //Number of retries to deliver a message until the timeoutCallback gets executed
 
@@ -33,7 +33,7 @@ typedef struct
 {
 	struct
 	{
-		tlp_message_t buffer[WINDOW_SIZE];
+		tlp_message_t buffer[WINDOW_SIZE + 1];
 		stc_fifo_t fifo;
 	}transmit_buffer;
 	tlp_frameRecieved callback;

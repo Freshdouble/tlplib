@@ -1,6 +1,13 @@
 #include "../src/tlp.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+
+#define FAULT_VAL 0.6
 
 tlp_t tlp1, tlp2;
+static int rec_count;
+static int faultCounter;
 
 char tlp_timeout(tlp_message_t *message)
 {
@@ -9,13 +16,23 @@ char tlp_timeout(tlp_message_t *message)
 
 char tlp_send_1(uint8_t *buffer, uint8_t size)
 {
-	tlp_recieve(&tlp2,buffer,size);
+	if(rand() < FAULT_VAL * RAND_MAX)
+	{
+		faultCounter++;
+	}
+	else
+	{
+		//tlp_recieve(&tlp2,buffer,size);
+	}
 	return 1;
 }
 
 char tlp_send_2(uint8_t *buffer, uint8_t size)
 {
-	tlp_recieve(&tlp1,buffer,size);
+	if(!(rand() < FAULT_VAL * RAND_MAX))
+	{
+		//tlp_recieve(&tlp1,buffer,size);
+	}
 	return 1;
 }
 
@@ -41,12 +58,15 @@ char tlp_recieve_2(uint8_t *buffer, uint8_t size)
 	{
 		data[i] = buffer[i];
 	}
-
+	rec_count++;
 	return 1;
 }
 
 int main (void)
 {
+	int i;
+	int u;
+	time_t t;
 	tlp1.timeoutCallback = &tlp_timeout;
 	tlp2.timeoutCallback = &tlp_timeout;
 
@@ -55,10 +75,27 @@ int main (void)
 
 	unsigned char message[3][5] = {{1,1,1,1,1},{12,2,2,2,2},{3,3,3,3,3}};
 
+	srand((unsigned) time(&t));
+
+	tlp_send(&tlp1,message[0],5);
+	while(1)
+	{
+		tlp_tick(&tlp1);
+		tlp_tick(&tlp2);
+	}
+
+	for(i = 0; i < 20000; i++)
+	{
+		tlp_send(&tlp1,message[0],5);
+		for(u = 0; u < 20; u++)
+		{
+			tlp_tick(&tlp1);
+			tlp_tick(&tlp2);
+		}
+	}
+
 	while(1)
 	{
 		tlp_send(&tlp1,message[0],5);
-		tlp_tick(&tlp1);
-		tlp_tick(&tlp2);
 	}
 }

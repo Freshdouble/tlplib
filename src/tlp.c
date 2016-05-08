@@ -5,10 +5,12 @@
  *      Author: Peter Kremsner
  */
 
-
 #include "tlp.h"
+#include <stdlib.h>
+#include <limits.h>
 
-void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction, tlp_frameSend framesendFunction)
+void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction,
+		tlp_frameSend framesendFunction)
 {
 	tlp->data_to_acknowledge = 0;
 	tlp->last_transmitted_sequence = 0;
@@ -16,25 +18,25 @@ void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction, tlp_frameSe
 	tlp->ack_counter = ACK_COUNTER;
 	tlp->callback = recieveCallbackFunction;
 	tlp->framesendFunction = framesendFunction;
-	fifo_init(&tlp->transmit_buffer.fifo,tlp->transmit_buffer.buffer,
-			WINDOW_SIZE,sizeof(tlp_message_t));
+	fifo_init(&tlp->transmit_buffer.fifo, tlp->transmit_buffer.buffer,
+	WINDOW_SIZE + 1, sizeof(tlp_message_t));
 }
 
 void tlp_recv_ack(uint8_t number, tlp_t *tlp)
 {
 	int i;
 	tlp_message_t* message;
-	if(number != 0) //If ACK is 0 it isn't valid ACK Field
+	if (number != 0) //If ACK is 0 it isn't valid ACK Field
 	{
-		for(i = 0; i < WINDOW_SIZE; i++)
+		for (i = 0; i < WINDOW_SIZE; i++)
 		{
-			message = fifo_get_nth_Object(i,&tlp->transmit_buffer.fifo);
-			if(!message)
+			message = fifo_get_nth_Object(i, &tlp->transmit_buffer.fifo);
+			if (!message)
 				break;
 
-			if(message->data[0] == number)
+			if (message->data[0] == number)
 			{
-				fifo_delete_n_Objects(i+1,&tlp->transmit_buffer.fifo);
+				fifo_delete_n_Objects(i + 1, &tlp->transmit_buffer.fifo);
 				break;
 			}
 		}
@@ -43,26 +45,41 @@ void tlp_recv_ack(uint8_t number, tlp_t *tlp)
 
 uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 {
-	if(size < 2)
+	if (size < 2)
 		return 0;
 
-	uint16_t upperSequence = tlp->last_recieved_sequence + 1;
-	uint16_t lowerSequence = ((uint16_t)(tlp->last_recieved_sequence - WINDOW_SIZE)) % WINDOW_SIZE;
+	uint32_t upper;
+	uint32_t lower;
+	uint32_t current = data[0] + UCHAR_MAX;
 
-	if(upperSequence > data[0] || lowerSequence > data[0]) //Check if frame is in the right order
-		return 0;
-
-	tlp_recv_ack(data[1], tlp);
-	if(size != 2) // If size == 2 recieved a simple ack Message
+	if (tlp->last_recieved_sequence == 255)
 	{
-		tlp->last_recieved_sequence = data[0]; //Update recieve Order
-
-		tlp->data_to_acknowledge = data[0];    //Ack byte
-		tlp->ack_counter = ACK_COUNTER;
-
-		return tlp->callback(&data[2],size - 2);
+		upper = 1 + UCHAR_MAX;
+		lower = UCHAR_MAX - (WINDOW_SIZE - 1);
 	}
-	return 1;
+	else
+	{
+		upper = tlp->last_recieved_sequence + 1 + UCHAR_MAX;
+		if (tlp->last_recieved_sequence + WINDOW_SIZE <= UCHAR_MAX)
+			lower = tlp->last_recieved_sequence + UCHAR_MAX - WINDOW_SIZE;
+		else
+			lower = tlp->last_recieved_sequence + UCHAR_MAX - (WINDOW_SIZE - 1);
+	}
+
+	if (upper >= current && lower <= current)
+	{
+		tlp_recv_ack(data[1], tlp);
+		if (size != 2 && current == upper) // If size == 2 recieved a simple ack Message
+		{
+			tlp->last_recieved_sequence = data[0]; //Update recieve Order
+
+			tlp->data_to_acknowledge = data[0];    //Ack byte
+
+			return tlp->callback(&data[2], size - 2);
+		}
+		return 1;
+	}
+	return 0;
 }
 
 uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
@@ -71,17 +88,17 @@ uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
 	uint8_t increment_sequence;
 	int i;
 
-	if(size > TLP_MESSAGE_SIZE)
+	if (size > TLP_MESSAGE_SIZE)
 		return 0;
 
 	increment_sequence = tlp->last_transmitted_sequence + 1;
-	if(increment_sequence == 0)
+	if (increment_sequence == 0)
 		increment_sequence = 1;
 
 	message.data[0] = increment_sequence;
 	message.data[1] = tlp->data_to_acknowledge;
 
-	for(i = 0; i < size; i++)
+	for (i = 0; i < size; i++)
 	{
 		message.data[i + 2] = data[i];
 	}
@@ -90,9 +107,9 @@ uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
 	message.resendCounter = RESEND_COUNTER;
 	message.timeoutCounter = TIMEOUT;
 
-	if(fifo_write_object(&message,&tlp->transmit_buffer.fifo))
+	if (fifo_write_object(&message, &tlp->transmit_buffer.fifo))
 	{
-		if(tlp->framesendFunction(message.data,message.size))
+		if (tlp->framesendFunction(message.data, message.size))
 		{
 			tlp->ack_counter = ACK_COUNTER;
 			tlp->last_transmitted_sequence = increment_sequence;
@@ -106,11 +123,14 @@ uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
 void tlp_send_ack(tlp_t *tlp)
 {
 	uint8_t message[2];
-	if(tlp->data_to_acknowledge)
+	if (tlp->data_to_acknowledge)
 	{
-		message[0] = tlp->last_transmitted_sequence + 1; //Pick a valid sequence number
+		if (tlp->last_transmitted_sequence)
+			message[0] = tlp->last_transmitted_sequence; //Pick a valid sequence number
+		else
+			message[0] = tlp->last_transmitted_sequence + 1;
 		message[1] = tlp->data_to_acknowledge;
-		if(tlp->framesendFunction(message,2)) // Dont save this message, just transmit it
+		if (tlp->framesendFunction(message, 2)) // Dont save this message, just transmit it
 		{
 			tlp->ack_counter = ACK_COUNTER;
 		}
@@ -126,7 +146,7 @@ void tlp_tick(tlp_t *tlp)
 	uint16_t fifo_data;
 	tlp_message_t* message;
 
-	if(tlp->ack_counter == 0)
+	if (tlp->ack_counter == 0)
 	{
 		tlp_send_ack(tlp);
 	}
@@ -137,32 +157,31 @@ void tlp_tick(tlp_t *tlp)
 
 	fifo_data = fifo_datasize(&tlp->transmit_buffer.fifo);
 
-	while(fifo_data > 0)
+	while (fifo_data > 0)
 	{
-		message = fifo_get_nth_Object(fifo_data - 1,&tlp->transmit_buffer.fifo);
-		if(message->resendCounter == 0)
+		message = fifo_get_nth_Object(fifo_data - 1,
+				&tlp->transmit_buffer.fifo);
+		if (message->resendCounter == 0)
 		{
-			if(tlp->framesendFunction(message->data,message->size))
+			if (tlp->framesendFunction(message->data, message->size))
 			{
 				message->resendCounter = RESEND_COUNTER;
-			}
-			else
-			{
-				if(message->timeoutCounter == 0)
-				{
-					if(tlp->timeoutCallback(message))
-						tlp->timeoutCallback(message);
-					message->timeoutCounter = TIMEOUT;
-				}
-				else
-				{
-					message->timeoutCounter--;
-				}
 			}
 		}
 		else
 		{
 			message->resendCounter--;
+		}
+
+		if (message->timeoutCounter == 0)
+		{
+			if (tlp->timeoutCallback(message))
+				tlp->timeoutCallback(message);
+			message->timeoutCounter = TIMEOUT;
+		}
+		else
+		{
+			message->timeoutCounter--;
 		}
 		fifo_data--;
 	}
