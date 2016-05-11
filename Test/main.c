@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define FAULT_VAL 0.6
+#define FAULT_VAL 0.5
 
 tlp_t tlp1, tlp2;
 static int rec_count;
@@ -22,7 +22,7 @@ char tlp_send_1(uint8_t *buffer, uint8_t size)
 	}
 	else
 	{
-		//tlp_recieve(&tlp2,buffer,size);
+		tlp_recieve(&tlp2,buffer,size);
 	}
 	return 1;
 }
@@ -31,7 +31,7 @@ char tlp_send_2(uint8_t *buffer, uint8_t size)
 {
 	if(!(rand() < FAULT_VAL * RAND_MAX))
 	{
-		//tlp_recieve(&tlp1,buffer,size);
+		tlp_recieve(&tlp1,buffer,size);
 	}
 	return 1;
 }
@@ -77,17 +77,13 @@ int main (void)
 
 	srand((unsigned) time(&t));
 
-	tlp_send(&tlp1,message[0],5);
-	while(1)
-	{
-		tlp_tick(&tlp1);
-		tlp_tick(&tlp2);
-	}
-
 	for(i = 0; i < 20000; i++)
 	{
-		tlp_send(&tlp1,message[0],5);
-		for(u = 0; u < 20; u++)
+		if(!tlp_send(&tlp1,message[0],5))
+		{
+			tlp_flush(&tlp1);
+		}
+		for(u = 0; u < 100; u++)
 		{
 			tlp_tick(&tlp1);
 			tlp_tick(&tlp2);

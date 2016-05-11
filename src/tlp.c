@@ -12,7 +12,6 @@
 void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction,
 		tlp_frameSend framesendFunction)
 {
-	tlp->data_to_acknowledge = 0;
 	tlp->last_transmitted_sequence = 0;
 	tlp->last_recieved_sequence = 0;
 	tlp->ack_counter = ACK_COUNTER;
@@ -71,9 +70,7 @@ uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size)
 		tlp_recv_ack(data[1], tlp);
 		if (size != 2 && current == upper) // If size == 2 recieved a simple ack Message
 		{
-			tlp->last_recieved_sequence = data[0]; //Update recieve Order
-
-			tlp->data_to_acknowledge = data[0];    //Ack byte
+			tlp->last_recieved_sequence = data[0]; //Update recieve Order and Ack Byte
 
 			return tlp->callback(&data[2], size - 2);
 		}
@@ -96,7 +93,7 @@ uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
 		increment_sequence = 1;
 
 	message.data[0] = increment_sequence;
-	message.data[1] = tlp->data_to_acknowledge;
+	message.data[1] = tlp->last_recieved_sequence;
 
 	for (i = 0; i < size; i++)
 	{
@@ -123,13 +120,13 @@ uint8_t tlp_send(tlp_t *tlp, uint8_t *data, uint8_t size)
 void tlp_send_ack(tlp_t *tlp)
 {
 	uint8_t message[2];
-	if (tlp->data_to_acknowledge)
+	if (tlp->last_recieved_sequence)
 	{
 		if (tlp->last_transmitted_sequence)
 			message[0] = tlp->last_transmitted_sequence; //Pick a valid sequence number
 		else
 			message[0] = tlp->last_transmitted_sequence + 1;
-		message[1] = tlp->data_to_acknowledge;
+		message[1] = tlp->last_recieved_sequence;
 		if (tlp->framesendFunction(message, 2)) // Dont save this message, just transmit it
 		{
 			tlp->ack_counter = ACK_COUNTER;
@@ -184,6 +181,22 @@ void tlp_tick(tlp_t *tlp)
 			message->timeoutCounter--;
 		}
 		fifo_data--;
+	}
+}
+
+void tlp_flush(tlp_t *tlp)
+{
+	int i;
+	uint16_t fifo_data;
+	tlp_message_t* message;
+
+	fifo_data = fifo_datasize(&tlp->transmit_buffer.fifo);
+	if(fifo_data)
+	{
+		message = fifo_get_nth_Object(fifo_data - 1,
+								&tlp->transmit_buffer.fifo);
+		tlp->last_transmitted_sequence = message->data[0]; //Reset last_transmitted_sequence to the smallest sequencenumber in the buffer
+		fifo_clear(&tlp->transmit_buffer.fifo);
 	}
 }
 
