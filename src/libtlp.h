@@ -17,9 +17,11 @@
 #define ACK_COUNTER RESEND_COUNTER - 2 //This must be smallern than the RESEND_COUNTER
 #define TIMEOUT 10 //Number of retries to deliver a message until the timeoutCallback gets executed
 
+//#define IMMEDIATE_ACK
+
 typedef struct
 {
-	uint8_t data[TLP_MESSAGE_SIZE + 2];
+	uint8_t data[TLP_MESSAGE_SIZE + 3];
 	uint8_t size;
 	uint8_t resendCounter;
 	uint8_t timeoutCounter;
@@ -42,7 +44,20 @@ typedef struct
 	uint8_t last_recieved_sequence;
 	uint8_t last_transmitted_sequence;
 	uint8_t ack_counter;
+	struct
+	{
+		unsigned int send_ack :1;
+	}status;
 }tlp_t;
+
+typedef union
+{
+	struct
+	{
+		unsigned int Ack_Ack :1;
+	}bits;
+	unsigned char flags;
+}flags_t;
 
 void tlp_init(tlp_t *tlp, tlp_frameRecieved recieveCallbackFunction, tlp_frameSend framesendFunction);
 uint8_t tlp_recieve(tlp_t *tlp, uint8_t *data, uint8_t size);
