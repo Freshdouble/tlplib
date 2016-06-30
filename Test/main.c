@@ -1,13 +1,14 @@
-#include "../src/tlp.h"
+#include "../src/libtlp.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 
-#define FAULT_VAL 0.5
+#define FAULT_VAL 0.3
 
 tlp_t tlp1, tlp2;
 static int rec_count;
 static int faultCounter;
+static int sendCounter;
 
 char tlp_timeout(tlp_message_t *message)
 {
@@ -16,6 +17,7 @@ char tlp_timeout(tlp_message_t *message)
 
 char tlp_send_1(uint8_t *buffer, uint8_t size)
 {
+    sendCounter++;
 	if(rand() < FAULT_VAL * RAND_MAX)
 	{
 		faultCounter++;
@@ -92,6 +94,7 @@ int main (void)
 
 	while(1)
 	{
-		tlp_send(&tlp1,message[0],5);
+		tlp_tick(&tlp1);
+		tlp_tick(&tlp2);
 	}
 }

@@ -1,0 +1,22 @@
+# depslib dependency file v1.0
+1467290287 source:c:\users\local\documents\github\tlplib\test\main.c
+	"../src/libtlp.h"
+	<stdlib.h>
+	<stdio.h>
+	<time.h>
+
+1467290379 c:\users\local\documents\github\tlplib\src\libtlp.h
+	<inttypes.h>
+	"../libfifo/c/stc_fifo.h"
+
+1462965201 c:\users\local\documents\github\tlplib\libfifo\c\stc_fifo.h
+	<stdint.h>
+
+1467290388 source:c:\users\local\documents\github\tlplib\src\libtlp.c
+	"libtlp.h"
+	<stdlib.h>
+	<limits.h>
+
+1462965201 source:c:\users\local\documents\github\tlplib\libfifo\c\stc_fifo.c
+	"stc_fifo.h"
+

@@ -17,7 +17,7 @@
 #define ACK_COUNTER RESEND_COUNTER - 2 //This must be smallern than the RESEND_COUNTER
 #define TIMEOUT 10 //Number of retries to deliver a message until the timeoutCallback gets executed
 
-//#define IMMEDIATE_ACK
+#define IMMEDIATE_ACK 0
 
 typedef struct
 {
